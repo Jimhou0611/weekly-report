@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>行銷組工作週報</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<style>
+/* Layout: header, selected week's key tasks, then a month calendar where the selected week row opens large and other weeks stay compact */
+:root{
+  --bg:#F3F5F7;--surface:#FFFFFF;--ink:#17222E;--muted:#5D6B79;--faint:#9AA6B2;--line:#DCE2E8;--soft:#F7F9FB;
+  --accent:#1E4E79;--accent-soft:#E3ECF5;
+  --done:#2D7A4F;--done-soft:#E2F2E8;--wip:#A66508;--wip-soft:#FBEFD9;--danger:#B3372F;
+  --f-display:"Noto Serif TC","Songti TC",serif;
+  --f-body:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  --f-num:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#11171D;--surface:#19222B;--ink:#E6ECF1;--muted:#93A2B0;--faint:#5F6E7C;--line:#2B3743;--soft:#151C23;
+  --accent:#7FB2E0;--accent-soft:#1F3347;
+  --done:#6CCB93;--done-soft:#183526;--wip:#E8B064;--wip-soft:#3A2C14;--danger:#F08A80;color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#11171D;--surface:#19222B;--ink:#E6ECF1;--muted:#93A2B0;--faint:#5F6E7C;--line:#2B3743;--soft:#151C23;
+  --accent:#7FB2E0;--accent-soft:#1F3347;
+  --done:#6CCB93;--done-soft:#183526;--wip:#E8B064;--wip-soft:#3A2C14;--danger:#F08A80;color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.6;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:28px 96px}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:28px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px}
+.eyebrow{font-size:12px;letter-spacing:.12em;color:var(--muted)}
+h1{font-family:var(--f-display);font-size:28px;line-height:1.25;margin:2px 0 0;text-wrap:balance}
+.meta{font-size:13px;color:var(--muted)}
+button,select,input,textarea{font:inherit;color:inherit}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 12px;cursor:pointer;font-size:14px}
+.btn:hover{border-color:var(--accent)}
+.btn:disabled{opacity:.4;cursor:default}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--surface);font-weight:500}
+.btn.ghost{border-color:transparent;background:transparent;color:var(--muted)}
+.btn.danger{color:var(--danger)}
+.btn.icon{padding:4px 10px;font-size:16px;line-height:1.2}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+section{display:flex;flex-direction:column;gap:12px}
+.sh{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+h2{font-size:17px;margin:0;font-weight:700;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+h2 .range{font-family:var(--f-num);font-weight:500;font-size:14px;color:var(--muted)}
+.chip{font-size:11px;font-weight:500;background:var(--accent);color:var(--surface);border-radius:4px;padding:1px 6px;line-height:1.5}
+.goals{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.goal{display:grid;grid-template-columns:76px minmax(0,1fr) minmax(0,1.2fr);gap:12px 16px;align-items:center;padding:12px 18px;border-top:1px solid var(--line)}
+.goal:first-child{border-top:0}
+.goal .t{font-weight:500}
+.goal .n{color:var(--muted);font-size:14px}
+.pill{display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;border-radius:999px;padding:2px 10px;white-space:nowrap}
+.pill.done{background:var(--done-soft);color:var(--done)}
+.pill.wip{background:var(--wip-soft);color:var(--wip)}
+.tag{font-size:11px;color:var(--accent);border:1px solid var(--accent);border-radius:4px;padding:0 5px;margin-left:6px;vertical-align:2px;white-space:nowrap}
+.empty{font-size:13px;color:var(--muted)}
+/* calendar */
+.monthnav{display:flex;align-items:center;gap:6px}
+.monthnav b{font-family:var(--f-num);font-weight:500;font-size:15px;min-width:96px;text-align:center}
+.cal{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.dow,.wk{display:grid;grid-template-columns:repeat(7,minmax(0,1fr))}
+.dow div{font-size:12px;color:var(--muted);text-align:center;padding:8px 0;border-bottom:1px solid var(--line);letter-spacing:.08em}
+.dow div:nth-child(n+6){color:var(--danger)}
+.wk{border-top:1px solid var(--line)}
+.dow + .wk{border-top:0}
+.cell{min-width:0;border-left:1px solid var(--line);padding:6px 8px}
+.cell:first-child{border-left:0}
+.dn{font-family:var(--f-num);font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.wk.mini .cell.out,.wk.none .cell.out{background:color-mix(in srgb,var(--line) 35%,transparent)}
+.today .dn b{background:var(--accent);color:var(--surface);border-radius:4px;padding:0 5px}
+.dn b{font-weight:500}
+.mo{font-family:var(--f-body);font-size:11px;font-weight:700;color:var(--accent)}
+/* compact week */
+.wk.mini{cursor:pointer;background:var(--soft)}
+.wk.mini:hover{background:var(--accent-soft)}
+.wk.mini .cell{height:74px;overflow:hidden}
+.mini-t{font-size:12px;line-height:1.45;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--ink)}
+.mini-t.d{color:var(--muted)}
+.mini-t i{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--faint);margin-right:5px;vertical-align:1px}
+.mini-t.d i{background:var(--done)}
+.more{font-size:11px;color:var(--muted)}
+.wk.none{cursor:default;background:var(--soft)}
+.wk.none .cell{height:44px}
+.wk.none.can{cursor:pointer}
+.wk.none.can:hover{background:var(--accent-soft)}
+.wk.none .hint{display:none}
+.wk.none.can:hover .hint{display:inline}
+.hint{font-size:11px;color:var(--accent)}
+/* open week */
+.band{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 12px;background:var(--accent-soft);border-top:1px solid var(--line);font-size:13px}
+.dow + .band{border-top:0}
+.band .r{font-family:var(--f-num);font-weight:500;color:var(--accent)}
+.wk.open{border-top:0}
+.wk.open .cell{min-height:200px;padding:10px;display:flex;flex-direction:column;gap:8px}
+.wk.open .cell.today{background:color-mix(in srgb,var(--accent-soft) 45%,var(--surface))}
+.wd{display:none}
+ul.tasks{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+ul.tasks li{display:flex;gap:7px;align-items:flex-start;font-size:13.5px;line-height:1.5;min-width:0}
+ul.tasks li span{overflow-wrap:anywhere}
+.ck{flex:none;width:15px;height:15px;border-radius:50%;border:1.5px solid var(--faint);margin-top:3px;display:inline-flex;align-items:center;justify-content:center}
+.ck.on{background:var(--done);border-color:var(--done)}
+.ck.on::after{content:"";width:4px;height:7px;border:solid var(--surface);border-width:0 1.8px 1.8px 0;transform:rotate(45deg) translate(-.5px,-1px)}
+li.is-done span{color:var(--muted)}
+/* edit mode */
+.erow{display:flex;gap:6px;align-items:center;min-width:0}
+.erow input[type=text]{flex:1;min-width:0;border:1px solid var(--line);border-radius:6px;background:var(--bg);padding:4px 7px;font-size:13.5px}
+input[type=checkbox]{width:16px;height:16px;accent-color:var(--done);flex:none;margin:0}
+.goal.edit{grid-template-columns:auto minmax(0,1fr) minmax(0,1.2fr) auto}
+.x{border:0;background:none;color:var(--muted);cursor:pointer;font-size:17px;line-height:1;padding:2px 4px;border-radius:4px;flex:none}
+.x:hover{color:var(--danger)}
+.add{align-self:flex-start;border:1px dashed var(--line);background:none;border-radius:8px;padding:3px 9px;font-size:12.5px;color:var(--accent);cursor:pointer}
+.goals .add{margin:10px 18px 14px}
+.savebar{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--surface);border-top:1px solid var(--line);
+  padding:12px max(16px,env(safe-area-inset-right,0px)) calc(12px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.savebar .in{max-width:1180px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.msg{font-size:14px}
+.msg.err{color:var(--danger)}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.reporter{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted)}
+.pwin{width:150px;border:1px solid var(--line);border-radius:8px;background:var(--surface);padding:6px 10px;font-size:14px}
+.reporter input{width:120px;border:1px solid var(--line);border-radius:6px;background:var(--bg);padding:3px 8px}
+@media (max-width:720px){
+  h1{font-size:23px}
+  .goal{grid-template-columns:auto minmax(0,1fr);padding:12px 14px}
+  .goal .n{grid-column:2}
+  .goal.edit{grid-template-columns:auto minmax(0,1fr) auto}
+  .goal.edit .n{grid-column:2 / 3}
+  .cell{padding:5px 4px}
+  .wk.mini .cell{height:52px}
+  .mini-t{font-size:0;line-height:0;display:inline-block;margin-right:2px}
+  .mini-t i{margin:0}
+  .more{display:none}
+  .dn{font-size:11px;justify-content:center}
+  .wk.open{grid-template-columns:1fr}
+  .wk.open .cell{min-height:0;border-left:0;border-top:1px solid var(--line);display:grid;grid-template-columns:72px minmax(0,1fr);align-items:start;gap:8px;padding:10px 12px}
+  .wk.open .cell:first-child{border-top:0}
+  .wk.open .dn{justify-content:flex-start;font-size:12px}
+  .wk.open .wd{display:inline;font-family:var(--f-body);color:var(--ink);font-weight:500}
+  .wk.open .body{display:flex;flex-direction:column;gap:6px;min-width:0}
+}
+.body{display:flex;flex-direction:column;gap:6px;min-width:0}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+(function(){
+var DAYS=[['mon','週一',0],['tue','週二',1],['wed','週三',2],['thu','週四',3],['fri','週五',4],['sat','週六',5],['sun','週日',6]];
+var state={reporter:'',updatedAt:null,weeks:[]};
+var versions={},snap={};   // 伺服器上的版本號與內容
+var loaded=false,editing=false,busy=false,msg='',msgErr=false,confirmDel=false;
+var pw=null,askPw=false,pwErr='',pwBusy=false;
+try{pw=localStorage.getItem('wr-pw');}catch(e){}
+var app=document.getElementById('app');
+
+function pd(s){var p=s.split('-');return new Date(+p[0],+p[1]-1,+p[2]);}
+function iso(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function add(d,n){var x=new Date(d);x.setDate(x.getDate()+n);return x;}
+function md(d){return (d.getMonth()+1)+'/'+d.getDate();}
+function label(w){var s=pd(w.start);return md(s)+' – '+md(add(s,6));}
+function uid(){return Math.random().toString(36).slice(2,9);}
+function sorted(){return state.weeks.slice().sort(function(a,b){return a.start<b.start?-1:1;});}
+function findWeek(s){return state.weeks.filter(function(w){return w.start===s;})[0];}
+function mondayOf(d){return add(d,-((d.getDay()+6)%7));}
+var today=new Date();today=new Date(today.getFullYear(),today.getMonth(),today.getDate());
+var thisMonday=iso(mondayOf(today));
+
+var curStart=null;
+try{curStart=localStorage.getItem('wr-week');}catch(e){}
+function pickDefault(){
+  if(findWeek(thisMonday))return thisMonday;
+  var ws=sorted();return ws.length?ws[ws.length-1].start:null;
+}
+function cur(){return curStart?findWeek(curStart):null;}
+function remember(){try{localStorage.setItem('wr-week',curStart||'');}catch(e){}}
+function select(s){curStart=s;confirmDel=false;remember();render();}
+
+// ---------- 資料同步 ----------
+function metaJSON(){return JSON.stringify({reporter:state.reporter||''});}
+function load(rows){
+  versions={};snap={};var weeks=[];state.reporter='';state.updatedAt=null;
+  rows.forEach(function(r){
+    versions[r.key]=r.version;
+    var o;try{o=JSON.parse(r.json);}catch(e){return;}
+    if(r.key==='_meta'){state.reporter=o.reporter||'';state.updatedAt=o.updatedAt||null;snap._meta=metaJSON();}
+    else{weeks.push(o);snap[r.key]=JSON.stringify(o);}
+  });
+  state.weeks=weeks;
+  if(!snap._meta)snap._meta=metaJSON();
+  if(!curStart||!findWeek(curStart))curStart=pickDefault();
+  loaded=true;
+}
+function changes(){
+  var out=[],seen={};
+  state.weeks.forEach(function(w){
+    seen[w.start]=1;var j=JSON.stringify(w);
+    if(snap[w.start]!==j)out.push({key:w.start,json:j,baseVersion:versions[w.start]||0});
+  });
+  Object.keys(snap).forEach(function(k){if(k!=='_meta'&&!seen[k])out.push({key:k,json:null,baseVersion:versions[k]||0});});
+  if(metaJSON()!==snap._meta)out.push({key:'_meta',json:null,meta:true});
+  return out;
+}
+function dirty(){return changes().length>0;}
+// ★ Google Apps Script 的網址（資料存放處）。如果之後重新「新增部署作業」產生了新網址，換掉這一行即可。
+var API_URL='https://script.google.com/macros/s/AKfycbyyXW4rkEVsuWVrJOSne2Z056RUrSXd0sT-LwP1GgnqEJrxTR1ZwHKs9-zR2h6yQOj0BA/exec';
+function server(fn,args,ok,fail){
+  fail=fail||function(){};
+  var req;
+  if(fn==='getData'){
+    req=fetch(API_URL+'?api=1&t='+Date.now(),{credentials:'omit',cache:'no-store'});
+  }else{
+    var body=fn==='checkPassword'?{action:'check',password:args[0]}:{action:'save',changes:args[0],password:args[1]};
+    req=fetch(API_URL,{method:'POST',credentials:'omit',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body)});
+  }
+  req.then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}).then(function(res){
+    if(res&&res.error)throw new Error(res.error);
+    if(fn==='getData')ok(res.data);else if(fn==='checkPassword')ok(!!res.valid);else ok(res);
+  }).catch(function(e){fail(e);});
+}
+function fetchAll(first){
+  server('getData',[],function(rows){
+    if(!first&&(dirty()||busy))return;
+    var a=document.activeElement;if(!first&&a&&(a.tagName==='INPUT'))return;
+    var before=JSON.stringify(snap);load(rows);
+    if(first||JSON.stringify(snap)!==before)render();
+  },function(err){if(first){var t='讀取失敗，請重新整理頁面再試一次。（'+((err&&err.message)||'未知錯誤')+'）';app.innerHTML='';app.appendChild(h('p',{cls:'empty wrap',text:t}));}});
+}
+
+function h(tag,attrs,kids){
+  var el=document.createElement(tag);
+  if(attrs)for(var k in attrs){var v=attrs[k];if(v==null||v===false)continue;
+    if(k==='text')el.textContent=v;else if(k.slice(0,2)==='on')el.addEventListener(k.slice(2),v);
+    else if(k==='cls')el.className=v;else el.setAttribute(k,v===true?'':v);}
+  (kids||[]).forEach(function(c){if(c!=null)el.appendChild(typeof c==='string'?document.createTextNode(c):c);});
+  return el;
+}
+function list(w,k){return w.days[k]||(w.days[k]=[]);}
+
+function render(){
+  if(!loaded){app.innerHTML='';app.appendChild(h('div',{cls:'wrap'},[h('p',{cls:'empty',text:'週報載入中…'})]));return;}
+  var w=cur();app.innerHTML='';
+  var wrap=h('div',{cls:'wrap'});app.appendChild(wrap);
+  var upd=state.updatedAt?new Date(state.updatedAt):null;
+  var metaKids=[editing?h('label',{cls:'reporter'},['填寫人',h('input',{id:'reporter',type:'text',value:state.reporter||'',oninput:function(e){state.reporter=e.target.value;bar();}})]):'填寫人：'+(state.reporter||'—')];
+  if(upd&&!isNaN(upd))metaKids.push('　·　最後更新 '+(upd.getMonth()+1)+'/'+upd.getDate()+' '+String(upd.getHours()).padStart(2,'0')+':'+String(upd.getMinutes()).padStart(2,'0'));
+  var tools=h('div',{cls:'toolbar'});
+  if(pw){
+    tools.appendChild(h('button',{cls:'btn'+(editing?' primary':''),id:'edit-toggle',onclick:function(){editing=!editing;confirmDel=false;render();},text:editing?'完成編輯':'編輯週報'}));
+    if(!editing)tools.appendChild(h('button',{cls:'btn ghost',id:'logout',onclick:function(){pw=null;try{localStorage.removeItem('wr-pw');}catch(e){}render();},text:'登出'}));
+  }else if(askPw){
+    var inp=h('input',{type:'password',id:'pw',placeholder:'輸入編輯密碼',cls:'pwin',onkeydown:function(e){if(e.key==='Enter')tryPw(inp.value);}});
+    tools.appendChild(inp);
+    tools.appendChild(h('button',{cls:'btn primary',id:'pw-ok',disabled:pwBusy||null,onclick:function(){tryPw(inp.value);},text:pwBusy?'確認中…':'確認'}));
+    tools.appendChild(h('button',{cls:'btn ghost',id:'pw-cancel',onclick:function(){askPw=false;pwErr='';render();},text:'取消'}));
+    if(pwErr)tools.appendChild(h('span',{cls:'msg err',text:pwErr}));
+    setTimeout(function(){var el=document.getElementById('pw');if(el&&!pwBusy)el.focus();},0);
+  }else{
+    tools.appendChild(h('button',{cls:'btn ghost',id:'edit-login',onclick:function(){askPw=true;render();},text:'編輯'}));
+  }
+  wrap.appendChild(h('header',null,[
+    h('div',null,[h('div',{cls:'eyebrow',text:'行銷組內工作進度'}),h('h1',{text:'工作週報'}),h('div',{cls:'meta'},metaKids)]),tools]));
+
+  if(editing){
+    var et=h('div',{cls:'toolbar'},[h('button',{cls:'btn',id:'new-week',onclick:newWeek,text:'＋ 新增下一週'}),h('span',{cls:'meta',text:'也可以直接點月曆下方空白的週次來建立；未完成的重點工作會自動帶入'})]);
+    if(w)et.appendChild(h('button',{cls:'btn ghost danger',id:'del-week',onclick:function(){if(!confirmDel){confirmDel=true;render();return;}delWeek();},text:confirmDel?'確定刪除 '+label(w)+'？再按一次':'刪除這一週'}));
+    wrap.appendChild(et);
+  }
+
+  if(w){
+    var gl=h('div',{cls:'goals'});
+    w.goals.forEach(function(g,i){
+      if(editing){
+        gl.appendChild(h('div',{cls:'goal edit'},[
+          h('input',{type:'checkbox',id:'gd-'+g.id,'aria-label':'完成',checked:g.done||null,onchange:function(e){g.done=e.target.checked;render();}}),
+          h('div',{cls:'erow'},[h('input',{type:'text',id:'gt-'+g.id,placeholder:'工作項目',value:g.text,oninput:function(e){g.text=e.target.value;bar();}})]),
+          h('div',{cls:'erow n'},[h('input',{type:'text',id:'gn-'+g.id,placeholder:'目前進度說明',value:g.note||'',oninput:function(e){g.note=e.target.value;bar();}})]),
+          h('button',{cls:'x','aria-label':'刪除此項',onclick:function(){w.goals.splice(i,1);render();},text:'×'})]));
+      }else{
+        gl.appendChild(h('div',{cls:'goal'},[
+          h('span',{cls:'pill '+(g.done?'done':'wip'),text:g.done?'✓ 完成':'進行中'}),
+          h('div',{cls:'t'},[g.text,g.carried?h('span',{cls:'tag',text:'延續上週'}):null]),
+          h('div',{cls:'n',text:g.note||''})]));
+      }
+    });
+    if(!w.goals.length&&!editing)gl.appendChild(h('div',{cls:'goal'},[h('span',{cls:'empty',text:'這週沒有提列重點工作'})]));
+    if(editing)gl.appendChild(h('button',{cls:'add',id:'add-goal',onclick:function(){w.goals.push({id:uid(),text:'',note:'',done:false});render();focusLast('gt-');},text:'＋ 新增重點工作'}));
+    wrap.appendChild(h('section',null,[h('div',{cls:'sh'},[h('h2',null,['重點工作',h('span',{cls:'range',text:label(w)}),w.start===thisMonday?h('span',{cls:'chip',text:'本週'}):null])]),gl]));
+  }else{
+    wrap.appendChild(h('p',{cls:'empty',text:'還沒有任何週報。按「編輯週報」→「新增下一週」開始。'}));
+  }
+
+  var nav=h('div',{cls:'monthnav'},[
+    h('button',{cls:'btn ghost',id:'go-today',onclick:function(){if(findWeek(thisMonday))select(thisMonday);},text:'回到本週'})]);
+  var cal=h('div',{cls:'cal'},[h('div',{cls:'dow','aria-hidden':'true'},['一','二','三','四','五','六','日'].map(function(t){return h('div',{text:t});}))]);
+  var ws=sorted(),first=ws.length?ws[0].start:thisMonday,last=ws.length?ws[ws.length-1].start:thisMonday;
+  if(thisMonday<first)first=thisMonday;
+  var end=iso(add(pd(last>thisMonday?last:thisMonday),editing?28:0));
+  for(var m=pd(first);iso(m)<=end;m=add(m,7)){
+    var s=iso(m),wk=findWeek(s);
+    if(wk&&s===curStart)openWeek(cal,wk);
+    else if(wk)cal.appendChild(miniWeek(wk));
+    else cal.appendChild(noWeek(s));
+  }
+  wrap.appendChild(h('section',null,[h('div',{cls:'sh'},[h('h2',null,['每日工作']),nav]),cal]));
+  bar();
+}
+
+function dateCell(d,cls,kids){
+  var isToday=d.getTime()===today.getTime(),out=d.getMonth()%2===1;
+  return h('div',{cls:'cell'+(cls?' '+cls:'')+(isToday?' today':'')+(out?' out':'')},kids);
+}
+function dn(d,k){return h('div',{cls:'dn'},[k?h('span',{cls:'wd',text:k}):null,h('b',{text:String(d.getDate())}),d.getDate()===1?h('span',{cls:'mo',text:(d.getMonth()+1)+'月'}):null]);}
+
+function miniWeek(w){
+  var s=pd(w.start);
+  var row=h('div',{cls:'wk mini',role:'button',tabindex:'0','aria-label':'查看 '+label(w),onclick:function(){select(w.start);},
+    onkeydown:function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();select(w.start);}}});
+  DAYS.forEach(function(d){
+    var date=add(s,d[2]),l=list(w,d[0]),kids=[dn(date)];
+    l.slice(0,2).forEach(function(t){kids.push(h('div',{cls:'mini-t'+(t.done?' d':''),title:t.text},[h('i'),t.text]));});
+    if(l.length>2)kids.push(h('div',{cls:'more',text:'+'+(l.length-2)}));
+    row.appendChild(dateCell(date,null,kids));
+  });
+  return row;
+}
+function noWeek(s){
+  var can=editing,start=pd(s);
+  var row=h('div',{cls:'wk none'+(can?' can':''),role:can?'button':null,tabindex:can?'0':null,'aria-label':can?'建立 '+md(start)+' 這一週':null,
+    onclick:can?function(){createWeek(s);}:null,onkeydown:can?function(e){if(e.key==='Enter'){createWeek(s);}}:null});
+  DAYS.forEach(function(d,i){var date=add(start,d[2]);row.appendChild(dateCell(date,null,[h('div',{cls:'dn'},[h('b',{text:String(date.getDate())}),i===0&&can?h('span',{cls:'hint',text:'＋ 建立這週'}):null])]));});
+  return row;
+}
+function openWeek(cal,w){
+  var s=pd(w.start);
+  cal.appendChild(h('div',{cls:'band'},[h('span',null,[h('span',{cls:'r',text:label(w)}),w.start===thisMonday?h('span',{cls:'chip',style:'margin-left:8px',text:'本週'}):null])]));
+  var row=h('div',{cls:'wk open'});
+  DAYS.forEach(function(d){
+    var date=add(s,d[2]),l=list(w,d[0]),body=h('div',{cls:'body'});
+    if(editing){
+      l.forEach(function(t,i){
+        body.appendChild(h('div',{cls:'erow'},[
+          h('input',{type:'checkbox',id:'dd-'+t.id,'aria-label':'完成',checked:t.done||null,onchange:function(e){t.done=e.target.checked;render();}}),
+          h('input',{type:'text',id:'dt-'+t.id,value:t.text,placeholder:'工作內容',oninput:function(e){t.text=e.target.value;bar();}}),
+          h('button',{cls:'x','aria-label':'刪除此項',onclick:function(){l.splice(i,1);render();},text:'×'})]));
+      });
+      body.appendChild(h('button',{cls:'add',id:'add-'+d[0],onclick:function(){var id=uid();l.push({id:id,text:'',done:false});render();var el=document.getElementById('dt-'+id);if(el)el.focus();},text:'＋ 新增'}));
+    }else if(l.length){
+      body.appendChild(h('ul',{cls:'tasks'},l.map(function(t){return h('li',{cls:t.done?'is-done':null},[h('i',{cls:'ck'+(t.done?' on':''),'aria-label':t.done?'已完成':'進行中'}),h('span',{text:t.text})]);})));
+    }
+    row.appendChild(dateCell(date,null,[dn(date,d[1]),body]));
+  });
+  cal.appendChild(row);
+}
+
+function focusLast(prefix){var els=app.querySelectorAll('input[id^="'+prefix+'"]');if(els.length)els[els.length-1].focus();}
+
+function emptyDays(){var o={};DAYS.forEach(function(d){o[d[0]]=[];});return o;}
+function createWeek(start){
+  var prev=sorted().filter(function(w){return w.start<start;}).pop();
+  var goals=prev?prev.goals.filter(function(g){return !g.done&&(g.text||'').trim();}).map(function(g){return {id:uid(),text:g.text,note:g.note||'',done:false,carried:true};}):[];
+  state.weeks.push({start:start,goals:goals,days:emptyDays()});
+  select(start);
+}
+function newWeek(){
+  var ws=sorted(),last=ws[ws.length-1];
+  createWeek(last?iso(add(pd(last.start),7)):thisMonday);
+}
+function delWeek(){
+  state.weeks=state.weeks.filter(function(w){return w.start!==curStart;});
+  curStart=pickDefault();confirmDel=false;remember();render();
+}
+
+var barEl=null;
+function bar(){
+  var d=loaded&&dirty(),show=d||msg;
+  if(!show){if(barEl){barEl.remove();barEl=null;}return;}
+  if(barEl)barEl.remove();
+  barEl=h('div',{cls:'savebar',role:'status'},[h('div',{cls:'in'},[
+    h('span',{cls:'msg'+(msgErr?' err':''),text:msg||(d?'有尚未儲存的變更，儲存後大家打開網址就會看到最新內容。':'')}),
+    d?h('div',{cls:'toolbar'},[
+      h('button',{cls:'btn ghost',id:'discard',disabled:busy||null,onclick:discard,text:'捨棄變更'}),
+      h('button',{cls:'btn primary',id:'save',disabled:busy||null,onclick:save,text:busy?'儲存中…':'儲存並更新'})
+    ]):null])]);
+  document.body.appendChild(barEl);
+}
+function discard(){
+  var rows=Object.keys(snap).map(function(k){return {key:k,json:k==='_meta'?JSON.stringify({reporter:JSON.parse(snap._meta).reporter,updatedAt:state.updatedAt}):snap[k],version:versions[k]||0};});
+  load(rows);msg='';render();
+}
+function clean(){
+  state.weeks.forEach(function(w){
+    w.goals=w.goals.filter(function(g){return (g.text||'').trim()||(g.note||'').trim();});
+    DAYS.forEach(function(d){w.days[d[0]]=(w.days[d[0]]||[]).filter(function(t){return (t.text||'').trim();});});
+  });
+}
+function tryPw(v){
+  if(!v||pwBusy)return;pwBusy=true;pwErr='';render();
+  server('checkPassword',[v],function(ok){
+    pwBusy=false;
+    if(ok){pw=v;askPw=false;editing=true;try{localStorage.setItem('wr-pw',v);}catch(e){}}
+    else pwErr='密碼不對';
+    render();
+  },function(){pwBusy=false;pwErr='連線失敗，請再試一次';render();});
+}
+function save(){
+  if(busy)return;
+  clean();
+  var ch=changes();if(!ch.length){render();return;}
+  var now=new Date().toISOString();
+  ch=ch.filter(function(c){return !c.meta;});
+  ch.push({key:'_meta',json:JSON.stringify({reporter:state.reporter||'',updatedAt:now}),baseVersion:versions._meta||0});
+  busy=true;msg='儲存中…';msgErr=false;bar();remember();
+  server('saveChanges',[ch,pw],function(res){
+    busy=false;
+    if(res.denied){pw=null;editing=false;try{localStorage.removeItem('wr-pw');}catch(e){}msg='編輯密碼已變更，請重新輸入密碼後再儲存。你剛改的內容還在畫面上。';msgErr=true;render();return;}
+    load(res.data);
+    if(res.ok){msg='已儲存';msgErr=false;setTimeout(function(){if(msg==='已儲存'){msg='';bar();}},2500);}
+    else{msg='有人剛剛也改了 '+res.conflicts.map(function(k){return label({start:k});}).join('、')+' 這週，已載入最新內容，請再改一次。';msgErr=true;}
+    render();
+  },function(){busy=false;msg='儲存失敗，請檢查網路後再按一次「儲存並更新」。';msgErr=true;render();});
+}
+window.addEventListener('beforeunload',function(e){if(loaded&&dirty()&&!busy){e.preventDefault();e.returnValue='';}});
+
+render();
+fetchAll(true);
+setInterval(function(){if(!document.hidden)fetchAll(false);},60000);
+})();
+</script>
+</body>
+</html>
