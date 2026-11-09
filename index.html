@@ -259,12 +259,15 @@ function weeksOf(mid){return (data[mid]||(data[mid]={weeks:[]})).weeks;}
 function sortedOf(mid){return weeksOf(mid).slice().sort(function(a,b){return a.start<b.start?-1:1;});}
 function findWeek(mid,s){return weeksOf(mid).filter(function(w){return w.start===s;})[0];}
 function list(w,k){return w.days[k]||(w.days[k]=[]);}
+function normWeek(o){var w={start:o.start,goals:Array.isArray(o.goals)?o.goals:[],days:{}};var d=o.days||{};
+  DAYS.forEach(function(x){w.days[x[0]]=Array.isArray(d[x[0]])?d[x[0]]:[];});
+  if(o.status&&Object.keys(o.status).length)w.status=o.status;return w;}
 function defStatus(k){return (k==='sat'||k==='sun')?'off':'work';}
 function dayStatus(w,k){var s=w&&w.status&&w.status[k];return s||defStatus(k);}
 function setStatus(w,k,v){w.status=w.status||{};if(v===defStatus(k))delete w.status[k];else w.status[k]=v;if(!Object.keys(w.status).length)delete w.status;}
 
 // ---------- 網址 #成員 ----------
-function readHash(){var h=decodeURIComponent((location.hash||'').slice(1));return h&&h!=='all'?h:'all';}
+function readHash(){var h=decodeURIComponent((location.hash||'').slice(1));return h||'all';}
 function setHash(v){var t=v==='all'?'':'#'+v;if(location.hash!==t){try{history.replaceState(null,'',location.pathname+location.search+t);}catch(e){location.hash=t;}}}
 view=readHash();
 window.addEventListener('hashchange',function(){var v=readHash();if(v!==view)go(v);});
@@ -275,11 +278,11 @@ function load(d){
   members.forEach(function(m){data[m.id]={weeks:[]};});
   (d.rows||[]).forEach(function(r){
     var i=r.key.indexOf('|');if(i<0)return;
-    var mid=r.key.slice(0,i),o;try{o=JSON.parse(r.json);}catch(e){return;}
+    var mid=r.key.slice(0,i),o;try{o=normWeek(JSON.parse(r.json));}catch(e){return;}
     if(!data[mid])return;
     versions[r.key]=r.version;snap[r.key]=JSON.stringify(o);data[mid].weeks.push(o);
   });
-  if(view!=='all'&&!member(view))view='all';
+  if(!member(view)){var last=ls('wr-view');view=member(last)?last:(members[0]?members[0].id:'all');setHash(view);}
   loaded=true;
 }
 function changes(){
@@ -326,7 +329,7 @@ function ta(id,val,ph,on){var el=h('textarea',{id:id,rows:'1',cls:'grow',placeho
 function go(v){
   if(v===view)return;
   if(dirty()){msg='請先儲存或捨棄目前的變更，再切換分頁。';msgErr=true;setHash(view);bar();return;}
-  view=v;editing=false;panel=null;confirmDel=false;confirmRemove=false;msg='';setHash(v);render();window.scrollTo(0,0);
+  view=v;ls('wr-view',v);editing=false;panel=null;confirmDel=false;confirmRemove=false;msg='';setHash(v);render();window.scrollTo(0,0);
 }
 
 // ---------- 畫面 ----------
@@ -344,14 +347,15 @@ function render(){
     if(panel==='login')wrap.appendChild(loginPanel(m));
     if(panel==='settings')wrap.appendChild(settingsPanel(m));
     memberView(wrap,m);
-  }else overview(wrap);
+  }else if(panel!=='join'){
+    wrap.appendChild(h('div',{cls:'panel'},[h('p',{text:'還沒有任何成員。按上方「＋ 新增我的分頁」建立你的週報。'})]));
+  }
   app.querySelectorAll('textarea.grow').forEach(grow);
   bar();
 }
 
 function tabs(){
   var t=h('nav',{cls:'tabs','aria-label':'成員'});
-  t.appendChild(h('button',{cls:'tab'+(view==='all'?' on':''),id:'tab-all',onclick:function(){go('all');},text:'全員總覽'}));
   members.forEach(function(m){t.appendChild(h('button',{cls:'tab'+(view===m.id?' on':''),id:'tab-'+m.id,onclick:function(){go(m.id);},text:m.name}));});
   t.appendChild(h('button',{cls:'tab add-tab',id:'tab-join',onclick:function(){if(dirty()){msg='請先儲存或捨棄目前的變更。';msgErr=true;bar();return;}panel=panel==='join'?null:'join';formErr='';render();},text:'＋ 新增我的分頁'}));
   return h('div',{cls:'tabs-wrap'},[t]);
@@ -405,7 +409,7 @@ function joinPanel(){
       formBusy=false;
       if(!res.ok){formErr=ERR[res.error]||'建立失敗，請再試一次';render();return;}
       load(res.data);creds[res.member.id]=a;saveCreds();
-      panel=null;view=res.member.id;setHash(view);editing=true;curStart=thisMonday;
+      panel=null;view=res.member.id;ls('wr-view',view);setHash(view);editing=true;curStart=thisMonday;
       if(!findWeek(view,thisMonday))createWeek(view,thisMonday,true);
       msg='分頁建立好了！填好本週工作後，記得按「儲存並更新」。';msgErr=false;render();
     },function(){formBusy=false;formErr='連線失敗，請再試一次';render();});
@@ -449,7 +453,7 @@ function settingsPanel(m){
     kids.push(h('div',{cls:'row danger-row'},[h('span',{cls:'meta',text:'管理者功能：'}),
       h('button',{cls:'btn ghost danger',id:'remove-member',disabled:formBusy||null,onclick:function(){
         if(!confirmRemove){confirmRemove=true;render();return;}
-        send({action:'member',member:m.id,password:adminPw,remove:true},function(){view='all';setHash('all');editing=false;panel=null;msg='已刪除 '+m.name+' 和他的所有週報';msgErr=false;});
+        send({action:'member',member:m.id,password:adminPw,remove:true},function(){view=members[0]?members[0].id:'all';setHash(view);editing=false;panel=null;msg='已刪除 '+m.name+' 和他的所有週報';msgErr=false;});
       },text:confirmRemove?'確定刪除 '+m.name+' 和他所有的週報？再按一次':'刪除這位成員'})]));
   }
   if(formErr)kids.push(h('p',{cls:'msg err',text:formErr}));
