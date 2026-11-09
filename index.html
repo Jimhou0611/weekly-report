@@ -258,6 +258,26 @@ header{align-items:center}
   .wk.open.editing .cell{cursor:pointer}
 }
 @media (prefers-reduced-motion:reduce){.wk.open{transition:none}}
+
+/* member management */
+.mg{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.mg-row{display:grid;grid-template-columns:minmax(0,1.3fr) 80px 70px minmax(0,1fr) 150px;gap:12px;align-items:center;padding:10px 16px;border-top:1px solid var(--line)}
+.mg-row:first-child{border-top:0}
+.mg-head{font-size:12px;color:var(--muted);padding-block:8px}
+.mg-name{display:flex;align-items:center;gap:8px;min-width:0}
+.mg-in{font:inherit;font-size:14px;color:var(--ink);border:1px solid var(--line);border-radius:8px;background:var(--bg);padding:6px 9px;min-width:0;width:100%;box-sizing:border-box}
+.panel .row .mg-in{width:auto;flex:1 1 160px}
+.mg-ck{display:flex;align-items:center;gap:6px;cursor:pointer}
+.mg-ck input{width:17px;height:17px;accent-color:var(--accent)}
+.mg-lab{display:none;font-size:13px}
+.mg-act{display:flex;gap:6px;justify-content:flex-end}
+@media (max-width:720px){
+  .mg-head{display:none}
+  .mg-row{grid-template-columns:1fr 1fr;padding:12px 14px}
+  .mg-name,.mg-pw,.mg-act{grid-column:1 / -1}
+  .mg-act{justify-content:flex-start}
+  .mg-lab{display:inline}
+}
 </style>
 </head>
 <body>
@@ -276,6 +296,7 @@ var view=null;                // 目前看的成員 id
 var screen='login';           // 'login' | 'join' | 'app'
 var panel=null;               // 'settings' | null
 var formErr='',formBusy=false,confirmRemove=false,reauth=false;
+var screen2=null,mgDel=null,mgBusy=false;   // 成員管理畫面
 var app=document.getElementById('app');
 
 function pd(s){var p=s.split('-');return new Date(+p[0],+p[1]-1,+p[2]);}
@@ -375,7 +396,7 @@ function go(v){
 }
 function logout(){
   if(dirty()){msg='請先儲存或捨棄目前的變更，再登出。';msgErr=true;bar();return;}
-  setLogin(null);me=null;members=[];data={};snap={};versions={};loaded=false;editing=false;panel=null;msg='';view=null;screen='login';formErr='';loadNames();render();
+  screen2=null;setLogin(null);me=null;members=[];data={};snap={};versions={};loaded=false;editing=false;panel=null;msg='';view=null;screen='login';formErr='';loadNames();render();
 }
 
 // ---------- 畫面 ----------
@@ -387,7 +408,12 @@ function render(){
   if(screen==='login'){wrap.appendChild(loginScreen());bar();return;}
   if(screen==='join'){wrap.appendChild(joinScreen());bar();return;}
   if(!loaded){wrap.appendChild(h('p',{cls:'empty',text:'週報載入中…'}));return;}
-  head.appendChild(h('div',{cls:'whoami'},[h('span',{text:(me.admin?'管理者 · ':'')+(me.name||'')}),h('button',{cls:'btn ghost',id:'logout',onclick:logout,text:'登出'})]));
+  head.appendChild(h('div',{cls:'whoami'},[h('span',{text:(me.admin?'管理者 · ':'')+(me.name||'')}),
+    me.admin?h('button',{cls:'btn'+(screen2==='manage'?' primary':''),id:'manage',onclick:function(){
+      if(dirty()){msg='請先儲存或捨棄目前的變更。';msgErr=true;bar();return;}
+      screen2=screen2==='manage'?null:'manage';editing=false;panel=null;mgDel=null;render();},text:screen2==='manage'?'回到週報':'成員管理'}):null,
+    h('button',{cls:'btn ghost',id:'logout',onclick:logout,text:'登出'})]));
+  if(screen2==='manage'&&me.admin){manageView(wrap);bar();return;}
   var m=member(view);
   if(members.length>1)wrap.appendChild(tabs());
   if(!m){wrap.appendChild(h('div',{cls:'panel'},[h('p',{text:'目前沒有可以查看的週報。'})]));bar();return;}
@@ -410,7 +436,7 @@ function editBar(m){
     t.appendChild(h('button',{cls:'btn'+(editing?' primary':''),id:'edit-toggle',onclick:function(){
       if(editing&&dirty()){msg='請先儲存或捨棄目前的變更。';msgErr=true;bar();return;}
       editing=!editing;confirmDel=false;if(!editing)panel=null;render();},text:editing?'完成編輯':'編輯週報'}));
-    if(editing)t.appendChild(h('button',{cls:'btn ghost',id:'settings',onclick:function(){panel=panel==='settings'?null:'settings';formErr='';confirmRemove=false;render();},text:'成員設定'}));
+    if(editing&&me.id===m.id)t.appendChild(h('button',{cls:'btn ghost',id:'settings',onclick:function(){panel=panel==='settings'?null:'settings';formErr='';confirmRemove=false;render();},text:'成員設定'}));
   }
   return t;
 }
@@ -482,20 +508,10 @@ function settingsPanel(m){
     send(body,function(){if(body.newPassword&&login&&login.id===m.id&&!me.admin)setLogin({id:login.id,pw:a});panel=null;msg='成員設定已更新';msgErr=false;});
   };
   var nameIn=field('s-name','名字','text','');nameIn.querySelector('input').value=m.name;
-  var kids=[h('h3',{text:m.name+' 的成員設定'}),
+  var kids=[h('h3',{text:'我的帳號設定'}),
     h('div',{cls:'fields'},[nameIn,field('s-pw','新密碼（不改就留空）','password','至少 4 個字'),field('s-pw2','再輸入一次新密碼','password','')]),
     h('div',{cls:'row'},[h('button',{cls:'btn primary',id:'s-ok',disabled:formBusy||null,onclick:submit,text:formBusy?'更新中…':'更新設定'}),
       h('button',{cls:'btn ghost',onclick:function(){panel=null;render();},text:'取消'})])];
-  if(me.admin){
-    var cb=h('input',{type:'checkbox',id:'s-viewall',checked:m.viewAll||null,disabled:formBusy||null,onchange:function(e){
-      var v=e.target.checked;send({viewAll:v},function(){msg=v?m.name+' 現在可以看所有人的週報':m.name+' 現在只能看自己的週報';msgErr=false;});}});
-    kids.push(h('div',{cls:'row sep'},[h('label',{cls:'check'},[cb,h('span',{text:'可以看所有人的週報（給主管或你指定的人）'})])]));
-    kids.push(h('div',{cls:'row'},[h('span',{cls:'meta',text:'管理者功能：'}),
-      h('button',{cls:'btn ghost danger',id:'remove-member',disabled:formBusy||null,onclick:function(){
-        if(!confirmRemove){confirmRemove=true;render();return;}
-        send({remove:true},function(){view=null;editing=false;panel=null;msg='已刪除 '+m.name+' 和他的所有週報';msgErr=false;});
-      },text:confirmRemove?'確定刪除 '+m.name+' 和他所有的週報？再按一次':'刪除這位成員'})]));
-  }
   if(formErr)kids.push(h('p',{cls:'msg err',text:formErr}));
   return h('div',{cls:'panel'},kids);
 }
@@ -619,6 +635,62 @@ function createWeek(mid,start,silent){
 function delWeek(mid){
   data[mid].weeks=weeksOf(mid).filter(function(w){return w.start!==curStart;});
   confirmDel=false;render();
+}
+
+
+// ---------- 成員管理（管理者） ----------
+function mgSend(body,okMsg,after){
+  if(mgBusy)return;mgBusy=true;msg='更新中…';msgErr=false;bar();
+  api(Object.assign({},auth(),body),function(res){
+    mgBusy=false;
+    if(res.denied){msg='沒有權限，或登入已失效，請登出後重新登入。';msgErr=true;render();return;}
+    if(!res.ok){msg=ERR[res.error]||'更新失敗，請再試一次';msgErr=true;render();return;}
+    load(res);if(after)after();msg=okMsg;msgErr=false;render();
+    setTimeout(function(){if(msg===okMsg){msg='';bar();}},2500);
+  },function(){mgBusy=false;msg='連線失敗，請再試一次';msgErr=true;render();});
+}
+function manageView(wrap){
+  var sec=h('section',null,[h('div',{cls:'sh'},[h('h2',{text:'成員管理'}),h('span',{cls:'meta',text:'共 '+members.length+' 位'})])]);
+  var box=h('div',{cls:'mg'});
+  box.appendChild(h('div',{cls:'mg-row mg-head'},[h('div',{text:'名字'}),h('div',{text:'可看全部'}),h('div',{text:'管理者'}),h('div',{text:'重設密碼'}),h('div')]));
+  members.forEach(function(m){
+    var self=me.id===m.id;
+    var nameIn=h('input',{id:'mg-n-'+m.id,type:'text',cls:'mg-in','aria-label':'名字'});nameIn.value=m.name;
+    var pwIn=h('input',{id:'mg-p-'+m.id,type:'password',cls:'mg-in',placeholder:'輸入新密碼',autocomplete:'new-password','aria-label':'新密碼'});
+    var upd=function(){
+      var body={action:'member',member:m.id},n=nameIn.value.trim(),p=pwIn.value;
+      if(n&&n!==m.name)body.name=n;
+      if(p){if(p.length<4){msg=ERR.pw_short;msgErr=true;bar();return;}body.newPassword=p;}
+      if(!body.name&&!body.newPassword){msg='沒有要更新的內容';msgErr=false;bar();return;}
+      mgSend(body,(body.newPassword?m.name+' 的密碼已重設':'名字已更新'),function(){if(body.newPassword&&self&&login)setLogin({id:login.id,pw:p});});
+    };
+    box.appendChild(h('div',{cls:'mg-row'},[
+      h('div',{cls:'mg-name'},[nameIn,self?h('span',{cls:'chip',text:'我'}):null]),
+      h('label',{cls:'mg-ck'},[h('input',{type:'checkbox',id:'mg-v-'+m.id,checked:(m.viewAll||m.admin)||null,disabled:(m.admin||mgBusy)||null,onchange:function(e){mgSend({action:'member',member:m.id,viewAll:e.target.checked},e.target.checked?m.name+' 可以看所有人的週報了':m.name+' 只能看自己的週報了');}}),h('span',{cls:'mg-lab',text:'可看全部'})]),
+      h('label',{cls:'mg-ck'},[h('input',{type:'checkbox',id:'mg-a-'+m.id,checked:m.admin||null,disabled:(self||mgBusy)||null,title:self?'不能取消自己的管理者權限':null,onchange:function(e){mgSend({action:'member',member:m.id,admin:e.target.checked},e.target.checked?m.name+' 現在是管理者':m.name+' 已取消管理者');}}),h('span',{cls:'mg-lab',text:'管理者'})]),
+      h('div',{cls:'mg-pw'},[pwIn]),
+      h('div',{cls:'mg-act'},[h('button',{cls:'btn',id:'mg-u-'+m.id,disabled:mgBusy||null,onclick:upd,text:'更新'}),
+        self?null:h('button',{cls:'btn ghost danger',id:'mg-d-'+m.id,disabled:mgBusy||null,onclick:function(){
+          if(mgDel!==m.id){mgDel=m.id;render();return;}
+          mgSend({action:'member',member:m.id,remove:true},'已刪除 '+m.name,function(){mgDel=null;});
+        },text:mgDel===m.id?'確定刪除？':'刪除'})])]));
+  });
+  sec.appendChild(box);
+  var addName=h('input',{id:'mg-new-name',type:'text',cls:'mg-in',placeholder:'名字'});
+  var addPw=h('input',{id:'mg-new-pw',type:'text',cls:'mg-in',placeholder:'密碼（至少 4 個字）',autocomplete:'off'});
+  var addVa=h('input',{type:'checkbox',id:'mg-new-va'});
+  var addIt=function(){
+    var n=addName.value.trim(),p=addPw.value;
+    if(!n){msg=ERR.name_empty;msgErr=true;bar();return;}
+    if(p.length<4){msg=ERR.pw_short;msgErr=true;bar();return;}
+    mgSend({action:'add',name:n,newPassword:p,viewAll:addVa.checked},'已新增 '+n+'，請把名字和密碼告訴他');
+  };
+  sec.appendChild(h('div',{cls:'panel'},[h('h3',{text:'新增成員'}),
+    h('p',{text:'幫同事建立帳號，再把名字和密碼告訴他。同事也可以自己在登入畫面按「新增我的分頁」註冊。'}),
+    h('div',{cls:'row'},[addName,addPw,h('label',{cls:'check'},[addVa,h('span',{text:'可看全部'})]),
+      h('button',{cls:'btn primary',id:'mg-add',disabled:mgBusy||null,onclick:addIt,text:'新增'})])]));
+  sec.appendChild(h('p',{cls:'meta',text:'「可看全部」：可以看所有人的週報，但只能改自己的。「管理者」：可以看、改所有人的週報，也能管理成員。'}));
+  wrap.appendChild(sec);
 }
 
 // ---------- 儲存 ----------
